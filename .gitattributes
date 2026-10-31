@@ -1,0 +1,2 @@
+# Script shell harus ber-akhiran baris LF agar jalan di VPS Linux
+*.sh text eol=lf

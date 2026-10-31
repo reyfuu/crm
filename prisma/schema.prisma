@@ -1,0 +1,366 @@
+// Skema database CRM + Kanban. Lihat docs/TRD.md bagian 4.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum ContactStatus {
+  LEAD
+  PROSPECT
+  CUSTOMER
+  INACTIVE
+}
+
+enum StageType {
+  OPEN
+  WON
+  LOST
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  OTHER
+  SYSTEM
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String?
+  role         Role      @default(MEMBER)
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  contacts      Contact[]      @relation("ContactOwner")
+  companies     Company[]      @relation("CompanyOwner")
+  deals         Deal[]         @relation("DealOwner")
+  boardMembers  BoardMember[]
+  assignments   TaskAssignee[]
+  notifications Notification[]
+}
+
+model Company {
+  id         String     @id @default(cuid())
+  name       String
+  domain     String?
+  industry   String?
+  size       String?
+  phone      String?
+  address    String?
+  city       String?
+  ownerId    String
+  owner      User       @relation("CompanyOwner", fields: [ownerId], references: [id])
+  contacts   Contact[]
+  deals      Deal[]
+  tags       Tag[]
+  activities Activity[]
+  deletedAt  DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([name])
+  @@index([ownerId])
+}
+
+model Contact {
+  id         String        @id @default(cuid())
+  firstName  String
+  lastName   String?
+  email      String?
+  phone      String? // format E.164 (+62...)
+  jobTitle   String?
+  status     ContactStatus @default(LEAD)
+  source     String?
+  address    String?
+  companyId  String?
+  company    Company?      @relation(fields: [companyId], references: [id])
+  ownerId    String
+  owner      User          @relation("ContactOwner", fields: [ownerId], references: [id])
+  tags       Tag[]
+  deals      Deal[]
+  tasks      Task[]
+  activities Activity[]
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([email])
+  @@index([phone])
+  @@index([ownerId, status])
+  @@index([companyId])
+}
+
+// Hanya ada satu pipeline penjualan, jadi tahap langsung menjadi kolom board.
+model Stage {
+  id          String    @id @default(cuid())
+  name        String
+  type        StageType @default(OPEN)
+  probability Int       @default(0) // 0..100
+  rottingDays Int       @default(14)
+  position    Float
+  deals       Deal[]
+
+  @@index([position])
+}
+
+model Deal {
+  id                String             @id @default(cuid())
+  title             String
+  value             Decimal            @default(0) @db.Decimal(18, 2)
+  currency          String             @default("IDR")
+  status            DealStatus         @default(OPEN)
+  priority          Priority           @default(MEDIUM)
+  expectedCloseDate DateTime?
+  closedAt          DateTime?
+  lostReason        String?
+  stageId           String
+  stage             Stage              @relation(fields: [stageId], references: [id])
+  stageEnteredAt    DateTime           @default(now())
+  position          Float
+  contactId         String?
+  contact           Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId         String?
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  ownerId           String
+  owner             User               @relation("DealOwner", fields: [ownerId], references: [id])
+  tags              Tag[]
+  history           DealStageHistory[]
+  tasks             Task[]
+  activities        Activity[]
+  version           Int                @default(0)
+  deletedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([stageId, position])
+  @@index([ownerId, status])
+}
+
+model DealStageHistory {
+  id          String   @id @default(cuid())
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  fromStageId String?
+  toStageId   String
+  changedById String
+  changedAt   DateTime @default(now())
+
+  @@index([dealId, changedAt])
+}
+
+model Board {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  color       String?
+  visibility  String        @default("ALL") // ALL | MEMBERS
+  isArchived  Boolean       @default(false)
+  isSystem    Boolean       @default(false) // board "Follow-up Sales"
+  ownerId     String
+  columns     BoardColumn[]
+  members     BoardMember[]
+  createdAt   DateTime      @default(now())
+}
+
+model BoardMember {
+  boardId String
+  userId  String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+}
+
+model BoardColumn {
+  id       String  @id @default(cuid())
+  boardId  String
+  board    Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  position Float
+  isDone   Boolean @default(false)
+  wipLimit Int?
+  tasks    Task[]
+
+  @@index([boardId, position])
+}
+
+model Task {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  columnId    String
+  column      BoardColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  position    Float
+  priority    Priority        @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  isArchived  Boolean         @default(false)
+  createdById String
+  dealId      String?
+  deal        Deal?           @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId   String?
+  contact     Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignees   TaskAssignee[]
+  checklist   ChecklistItem[]
+  comments    Comment[]
+  labels      Label[]
+  attachments Attachment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([columnId, position])
+  @@index([dueDate])
+}
+
+model TaskAssignee {
+  taskId String
+  userId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
+}
+
+model ChecklistItem {
+  id       String  @id @default(cuid())
+  taskId   String
+  task     Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  text     String
+  isDone   Boolean @default(false)
+  position Float
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  body      String
+  mentions  String[] // daftar userId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileKey    String // key di object storage
+  mimeType   String
+  size       Int
+  uploadedBy String
+  createdAt  DateTime @default(now())
+}
+
+model Activity {
+  id         String       @id @default(cuid())
+  type       ActivityType
+  body       String
+  occurredAt DateTime     @default(now())
+  authorId   String? // null untuk SYSTEM
+  contactId  String?
+  contact    Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId  String?
+  company    Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dealId     String?
+  deal       Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  meta       Json?
+  createdAt  DateTime     @default(now())
+
+  @@index([contactId, occurredAt])
+  @@index([companyId, occurredAt])
+  @@index([dealId, occurredAt])
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  color     String
+  contacts  Contact[]
+  companies Company[]
+  deals     Deal[]
+}
+
+model Label {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String
+  tasks Task[]
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // TASK_ASSIGNED | MENTION | TASK_DUE | OWNER_CHANGED | COMMENT | DEAL_CHANGED
+  title     String
+  link      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+model LostReason {
+  id       String @id @default(cuid())
+  name     String @unique
+  position Float
+}
+
+model LeadSource {
+  id       String @id @default(cuid())
+  name     String @unique
+  position Float
+}
+
+model Setting {
+  key   String @id
+  value Json
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String // LOGIN, ROLE_CHANGED, DELETE, IMPORT, EXPORT, ...
+  entity    String?
+  entityId  String?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

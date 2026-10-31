@@ -1,0 +1,43 @@
+# Setiap push ke branch main: cek kode, lalu deploy ke VPS lewat SSH.
+# Secrets yang wajib diisi di GitHub (Settings → Secrets and variables → Actions):
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Hanya untuk prisma generate saat npm ci; tidak ada koneksi DB di tahap ini.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy ke VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          command_timeout: 20m
+          script: bash /var/www/crm/scripts/deploy.sh
