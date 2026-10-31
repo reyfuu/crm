@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/session";
@@ -7,10 +8,10 @@ import { Avatar, Badge, Card, PageHeader } from "@/components/ui/misc";
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
-// Versi awal: hanya menampilkan data. Form pengelolaan menyusul (docs/FRD.md modul SET).
+// Tahap & alasan Lost masih baca-saja (docs/FRD.md modul SET). Pengguna dikelola di /settings/users.
 export default async function SettingsPage() {
   const user = await requireUser();
-  if (!can(user, "stage.manage")) notFound();
+  if (!can(user, "settings.manage")) notFound();
 
   const [stages, users, reasons] = await Promise.all([
     db.stage.findMany({ orderBy: { position: "asc" } }),
@@ -43,7 +44,10 @@ export default async function SettingsPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="mb-3 font-semibold">Pengguna</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Pengguna</h2>
+            {can(user, "user.manage") && <Link href="/settings/users" className="text-[13px] font-medium text-primary hover:underline">Kelola pengguna →</Link>}
+          </div>
           <ul className="divide-y divide-border text-[13px]">
             {users.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2">

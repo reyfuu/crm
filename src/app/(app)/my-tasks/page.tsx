@@ -39,9 +39,9 @@ export default async function MyTasksPage() {
 
   return (
     <>
-      <PageHeader title="Tugas Saya" />
+      <PageHeader title="Tugas Saya"><p className="mt-2 text-sm text-muted-foreground">Fokus pada prioritas dan selesaikan satu langkah setiap hari.</p></PageHeader>
       {groups.length === 0 ? (
-        <EmptyState title="Semua tugas beres 🎉" description="Tidak ada tugas terbuka yang di-assign ke Anda." />
+        <EmptyState title="Semua tugas beres" description="Tidak ada tugas terbuka yang ditugaskan kepada Anda." />
       ) : (
         <div className="max-w-3xl space-y-5">
           {groups.map((g) => (

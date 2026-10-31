@@ -162,7 +162,7 @@ Kontras teks minimal 4.5:1 (WCAG AA) di kedua mode.
             │  Email    [____________]  │
             │  Password [____________]  │
             │  [        Masuk         ] │
-            │  Lupa password?           │
+            │  Lupa kata sandi? → info  │
             └───────────────────────────┘
 ```
 
@@ -324,7 +324,7 @@ Tahap Pipeline
 ## 11. Pemetaan Halaman → Requirement
 | Halaman | FR |
 |---------|----|
-| Login, Undangan, Lupa password | FR-AUTH-01..04 |
+| Login (termasuk petunjuk "Lupa kata sandi?": hubungi Admin), Undangan | FR-AUTH-01..04 |
 | Dashboard | FR-DASH-01..07 |
 | Kontak (daftar, detail) | FR-CON-01..08, FR-ACT-01..04, FR-SRCH-02 |
 | Perusahaan (daftar, detail) | FR-COM-01..04 |

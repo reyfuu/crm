@@ -142,7 +142,7 @@ function TaskModalBody({ taskId, onClose }: { taskId: string; onClose: () => voi
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">{c.authorName}</span> · {formatRelative(c.createdAt)}
-                    {(c.authorId === task.currentUserId || task.isManager) && (
+                    {(c.authorId === task.currentUserId || task.canDeleteAnyComment) && (
                       <button
                         type="button"
                         className="invisible ml-2 hover:text-danger group-hover:visible"

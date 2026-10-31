@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 import pg from "pg";
 
 const [email, password] = process.argv.slice(2);
-if (!email || !password || password.length < 8) {
-  console.error('Pakai: node scripts/set-password.mjs <email> "<password minimal 8 karakter>"');
+if (!email || !password || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+  console.error('Pakai: node scripts/set-password.mjs <email> "<password min. 8 karakter, huruf + angka>"');
   process.exit(1);
 }
 

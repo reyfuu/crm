@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils";
 
 const fieldBase =
-  "w-full rounded-sm border border-border bg-card px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50";
+  "w-full min-w-0 rounded-md border border-input bg-card px-3 text-base md:text-sm placeholder:text-muted-foreground/80 transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 aria-invalid:border-danger disabled:cursor-not-allowed disabled:opacity-50";
 
 export function Input({ className, ...props }: React.ComponentProps<"input">) {
-  return <input className={cn(fieldBase, "h-9", className)} {...props} />;
+  return <input data-slot="input" className={cn(fieldBase, "h-11", className)} {...props} />;
 }
 
 export function Select({ className, ...props }: React.ComponentProps<"select">) {
-  return <select className={cn(fieldBase, "h-9", className)} {...props} />;
+  return <select className={cn(fieldBase, "h-11", className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
@@ -16,7 +16,7 @@ export function Textarea({ className, ...props }: React.ComponentProps<"textarea
 }
 
 export function Label({ className, ...props }: React.ComponentProps<"label">) {
-  return <label className={cn("mb-1 block text-[13px] font-medium", className)} {...props} />;
+  return <label className={cn("mb-2 block text-[13px] font-medium", className)} {...props} />;
 }
 
 export function FieldError({ message }: { message?: string }) {

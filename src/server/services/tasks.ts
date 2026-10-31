@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { NotFoundError, ValidationError } from "@/server/action-utils";
-import { ForbiddenError } from "@/server/permissions";
+import { ForbiddenError, can } from "@/server/permissions";
 import type { CurrentUser } from "@/server/session";
 import { POSITION_GAP, needsRebalance, positionBetween } from "@/lib/position";
 
@@ -34,15 +34,15 @@ export async function getAccessibleBoard(user: CurrentUser, boardId: string) {
   const board = await db.board.findFirst({ where: { id: boardId, isArchived: false }, include: { members: true } });
   if (!board) return null;
   const isMember = board.members.some((m) => m.userId === user.id);
-  const visible = board.visibility === "ALL" || isMember || user.role !== "MEMBER";
+  const visible = board.visibility === "ALL" || isMember || can(user, "board.manageAll");
   return visible ? { board, isMember } : null;
 }
 
-/** Hanya anggota board (atau Admin/Manager) yang boleh mengubah tugas. */
+/** Hanya anggota board (atau pemilik hak "Akses semua board") yang boleh mengubah tugas. */
 async function assertCanEditBoard(user: CurrentUser, boardId: string) {
   const access = await getAccessibleBoard(user, boardId);
   if (!access) throw new NotFoundError("Board tidak ditemukan.");
-  if (!access.isMember && user.role === "MEMBER") throw new ForbiddenError();
+  if (!access.isMember && !can(user, "board.manageAll")) throw new ForbiddenError();
   return access.board;
 }
 

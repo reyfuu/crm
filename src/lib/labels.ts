@@ -16,3 +16,9 @@ export const activityType = {
   OTHER: "Lainnya",
   SYSTEM: "Sistem",
 } as const;
+
+export const roleLabel = {
+  ADMIN: { label: "Admin", tone: "indigo", description: "Akses penuh, termasuk kelola pengguna & pengaturan" },
+  MANAGER: { label: "Manager", tone: "sky", description: "Kelola semua data CRM, pipeline & board; tidak kelola pengguna" },
+  MEMBER: { label: "Member", tone: "slate", description: "Kelola kontak sendiri, ubah & geser deal, kerjakan tugas" },
+} as const satisfies Record<string, { label: string; tone: Tone; description: string }>;

@@ -1,6 +1,7 @@
 # Product Requirements Document (PRD)
 **Produk:** CRM + Kanban Internal
-**Versi:** 1.0 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [BRD.md](BRD.md)
+**Versi:** 1.1 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [BRD.md](BRD.md)
+**Revisi 1.1:** F1 diperjelas menjadi kelola pengguna lengkap; US-02 diubah, ditambah US-21..US-24; lupa password direset oleh Admin; hak akses per pengguna (F16).
 
 ---
 
@@ -24,7 +25,7 @@
 ## 3. Daftar Fitur & Prioritas (MoSCoW)
 | Kode | Fitur | Prioritas | BR |
 |------|-------|-----------|----|
-| F1 | Autentikasi & manajemen pengguna/peran | Must | BR-07 |
+| F1 | Autentikasi & kelola pengguna (daftar, tambah, ubah, nonaktifkan, hapus, reset password) | Must | BR-07, BR-11 |
 | F2 | Kontak (CRUD, tag, owner, pencarian, filter) | Must | BR-01 |
 | F3 | Perusahaan (CRUD, relasi kontak & deal) | Must | BR-01 |
 | F4 | Pipeline Deal Kanban (drag & drop, Won/Lost, total nilai per tahap) | Must | BR-02 |
@@ -39,6 +40,7 @@
 | F13 | Tampilan list/tabel sebagai alternatif Kanban | Could | BR-02 |
 | F14 | Integrasi WhatsApp & Email | Won't (MVP) → Fase 2 | BR-10 |
 | F15 | Otomasi workflow | Won't (MVP) → Fase 2 | — |
+| F16 | Manajemen hak akses per pengguna (default dari peran, pengecualian per orang) | Must | BR-12 |
 
 ## 4. User Stories & Acceptance Criteria
 
@@ -47,9 +49,36 @@
 - Given akun aktif, When saya memasukkan kredensial benar, Then saya diarahkan ke Dashboard.
 - Given kredensial salah 5x dalam 15 menit, Then login dikunci sementara.
 
-**US-02** — Sebagai Admin, saya ingin mengundang pengguna dan menetapkan peran agar akses terkontrol. *(F1, BR-07)*
-- Given saya Admin, When saya mengundang email dengan peran tertentu, Then pengguna menerima tautan aktivasi.
-- Given pengguna dinonaktifkan, Then ia tidak bisa login, tetapi datanya tetap ada.
+**US-02** — Sebagai Admin, saya ingin menambah pengguna baru dengan peran tertentu agar anggota tim bisa mulai bekerja. *(F1, BR-07, BR-11)*
+- Given saya Admin, When saya mengisi nama, email, peran, dan password awal (boleh dibuat acak), Then akun aktif dan data loginnya tampil sekali untuk saya salin dan bagikan.
+- Given email sudah dipakai pengguna lain, When saya menyimpan, Then sistem menolak dengan pesan yang jelas.
+- Given saya Manager atau Member, Then menu dan halaman Pengguna tidak tersedia untuk saya.
+- *Catatan:* undangan lewat email (tautan aktivasi) menyusul setelah SMTP tersedia.
+
+**US-21** — Sebagai Admin, saya ingin mencari, mengubah data & peran, serta menonaktifkan pengguna agar akses selalu sesuai kondisi tim. *(F1, BR-11)*
+- Given daftar pengguna, When saya mencari nama/email atau memfilter peran/status, Then hanya pengguna yang cocok yang tampil, beserta waktu login terakhirnya.
+- Given saya menonaktifkan pengguna yang sedang login, When ia membuka halaman berikutnya, Then ia langsung keluar dan melihat pesan bahwa akunnya dinonaktifkan; data miliknya tetap ada.
+- Given saya mengubah peran seseorang, Then hak aksesnya berubah pada permintaan berikutnya tanpa perlu login ulang.
+- Given saya mengubah akun sendiri, Then saya tidak dapat mengubah peran atau menonaktifkan diri sendiri.
+- Given hanya tersisa satu Admin aktif, Then ia tidak dapat diturunkan perannya atau dinonaktifkan.
+
+**US-22** — Sebagai Admin, saya ingin mengatur ulang password pengguna yang lupa agar ia bisa masuk lagi. *(F1, BR-11)*
+- Given saya lupa password, When saya menekan "Lupa kata sandi?" di halaman login, Then muncul petunjuk untuk menghubungi Admin.
+- Given saya Admin, When saya mengisi password baru untuk pengguna, Then password lama langsung tidak berlaku dan password baru tampil sekali untuk dibagikan.
+
+**US-23** — Sebagai Admin, saya ingin menghapus akun yang salah dibuat agar daftar pengguna tetap rapi. *(F1, BR-11)*
+- Given pengguna belum punya data (kontak, perusahaan, deal, tugas, komentar, aktivitas, riwayat tahap), When saya menghapusnya, Then akun hilang permanen dan tercatat di audit log.
+- Given pengguna sudah punya data, When saya mencoba menghapus, Then sistem menolak, menyebut jumlah datanya, dan menawarkan "Nonaktifkan saja".
+- Given akun saya sendiri, Then tombol hapus tidak tersedia.
+
+**US-24** — Sebagai Admin, saya ingin mengatur hak akses tiap pengguna untuk aksi penting agar akses sesuai tanggung jawabnya tanpa membuat peran baru. *(F16, BR-12)*
+- Given saya membuka modal Tambah/Ubah pengguna, Then bagian "Hak akses" menampilkan daftar aksi penting yang dikelompokkan, tercentang sesuai default peran yang dipilih.
+- Given saya mencentang hak yang bukan default (mis. Member diberi "Hapus deal"), When saya menyimpan, Then pengguna itu langsung bisa melakukan aksi tersebut tanpa login ulang; hak tersebut ditandai "Ditambahkan".
+- Given saya menghapus centang hak default (mis. Manager dicabut "Kelola pengaturan"), Then pengguna langsung kehilangan akses dan menu terkait hilang; hak tersebut ditandai "Dicabut".
+- Given saya mengganti peran di modal, Then centang kembali ke default peran baru dan bisa disesuaikan lagi; tombol "Default peran" mengembalikan pilihan ke default.
+- Given peran Admin dipilih, Then semua hak tercentang dan terkunci.
+- Given pengguna punya pengecualian, Then di daftar pengguna muncul badge "Akses khusus".
+- Given akun saya sendiri, Then hak akses tidak dapat saya ubah; "Kelola pengguna" tidak pernah dapat diberikan ke peran selain Admin.
 
 ### Kontak & Perusahaan
 **US-03** — Sebagai Sales, saya ingin menambah kontak baru dengan cepat agar lead tidak hilang. *(F2, BR-01)*
@@ -151,3 +180,6 @@ Manager buat Board → Buat tugas + assignee + deadline → Assignee dapat notif
 1. **Pipeline:** hanya satu pipeline penjualan.
 2. **Visibilitas deal:** semua deal tim tampil di satu board pipeline bersama; semua pengguna boleh menggeser & mengubah deal siapa pun (hapus deal dan ganti owner tetap Admin/Manager).
 3. **Login:** hanya email & password, tanpa login Google.
+4. **Kelola pengguna:** Admin membuat akun langsung dengan password awal (tanpa email undangan sampai SMTP tersedia). Pengguna yang sudah punya data tidak dihapus, cukup dinonaktifkan, agar riwayat tetap utuh.
+5. **Lupa password:** direset oleh Admin dari menu Pengguna; tidak ada reset mandiri lewat email.
+6. **Hak akses:** per pengguna dan per aksi penting. Default mengikuti peran; Admin menambah/mencabut hak untuk orang tertentu di modal Ubah pengguna. Kelola pengguna tetap khusus peran Admin.

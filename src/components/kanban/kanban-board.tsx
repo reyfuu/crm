@@ -188,7 +188,7 @@ export function KanbanBoard<T extends { id: string }>({ columns, renderCard, onM
       }}
       accessibility={{ announcements }}
     >
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-5" role="region" aria-label="Board Kanban, geser untuk melihat tahap lainnya" tabIndex={0}>
         {columns.map((col) => (
           <Column key={col.id} column={col} items={items[col.id] ?? []} renderCard={renderCard} canDrag={canDrag} onOpen={onOpen} />
         ))}
@@ -236,20 +236,20 @@ function Column<T extends { id: string }>({
   return (
     <section
       className={cn(
-        "flex max-h-[calc(100vh-11rem)] w-72 shrink-0 flex-col rounded-lg bg-surface",
+        "flex max-h-[calc(100dvh-13rem)] w-[min(20rem,calc(100vw-3rem))] shrink-0 flex-col rounded-lg border border-border bg-surface/70",
         isOver && "ring-2 ring-primary/40",
       )}
     >
-      <header className={cn("rounded-t-lg px-3 pt-3 pb-2", column.warn && "bg-warning/10")}>
+      <header className={cn("rounded-t-lg px-4 pt-4 pb-3", column.warn && "bg-warning/10")}>
         <div className="flex items-center gap-1.5">
           {column.icon}
           <h3 className="text-[15px] font-semibold">{column.title}</h3>
-          <span className="ml-auto text-xs text-muted-foreground tabular">{items.length}</span>
+          <span className="ml-auto flex min-w-6 items-center justify-center rounded-md border border-border bg-card px-1.5 py-0.5 text-xs text-muted-foreground tabular">{items.length}</span>
         </div>
         {column.header}
       </header>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        <div ref={setNodeRef} className="flex min-h-28 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
           {items.map((item) => (
             <SortableCard
               key={item.id}

@@ -8,8 +8,8 @@ import pg from "pg";
 
 const [email, name, role, password] = process.argv.slice(2);
 const roles = ["ADMIN", "MANAGER", "MEMBER"];
-if (!email || !name || !roles.includes(role) || !password || password.length < 8) {
-  console.error('Pakai: node scripts/create-user.mjs <email> "<nama>" <ADMIN|MANAGER|MEMBER> "<password minimal 8 karakter>"');
+if (!email || !name || !roles.includes(role) || !password || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+  console.error('Pakai: node scripts/create-user.mjs <email> "<nama>" <ADMIN|MANAGER|MEMBER> "<password min. 8 karakter, huruf + angka>"');
   process.exit(1);
 }
 

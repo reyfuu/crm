@@ -1,6 +1,7 @@
 # Business Requirements Document (BRD)
 **Proyek:** CRM + Kanban Internal
-**Versi:** 1.0 · **Tanggal:** 31 Oktober 2026 · **Status:** Draft
+**Versi:** 1.1 · **Tanggal:** 31 Oktober 2026 · **Status:** Draft
+**Revisi 1.1:** menambah BR-11 kelola pengguna (tambah, ubah, nonaktifkan, hapus, reset password) dan BR-12 manajemen hak akses per pengguna.
 
 ---
 
@@ -28,6 +29,7 @@ Aplikasi akan dibangun sebagai sistem **internal (single-tenant)** untuk dipakai
 | G4. Meningkatkan konversi | Win rate deal | Naik 10% dari baseline |
 | G5. Tugas tim terlacak | % tugas yang selesai tepat waktu | ≥ 80% |
 | G6. Adopsi sistem | Pengguna aktif mingguan / total pengguna | ≥ 90% |
+| G7. Akses terkendali | % akun karyawan yang keluar dinonaktifkan paling lambat pada hari terakhir kerja | 100% |
 
 ## 4. Stakeholder & Peran
 | Stakeholder | Peran di sistem | Kepentingan |
@@ -51,10 +53,13 @@ Aplikasi akan dibangun sebagai sistem **internal (single-tenant)** untuk dipakai
 | BR-08 | Data lama dari spreadsheet harus dapat dipindahkan (import) dan data dapat diekspor | Should | P1 |
 | BR-09 | Tahap pipeline dan kolom board harus dapat disesuaikan tanpa bantuan developer | Should | Fleksibilitas |
 | BR-10 | Sistem harus dapat diintegrasikan dengan WhatsApp & Email di fase berikutnya | Could (Fase 2) | P5 |
+| BR-11 | Admin harus dapat mengelola akun pengguna secara mandiri (tambah, ubah data & peran, nonaktifkan, hapus, reset password) tanpa bantuan developer, dan perubahan akses harus berlaku seketika | Must | Keamanan |
+| BR-12 | Admin harus dapat menyesuaikan hak akses tiap pengguna untuk aksi penting (menambah atau mencabut hak di atas default perannya) tanpa membuat peran baru, dan perubahannya berlaku seketika | Must | Keamanan, Fleksibilitas |
 
 ## 6. Ruang Lingkup
 ### 6.1 Dalam Lingkup (MVP)
-- Manajemen pengguna & peran (Admin, Manager, Member)
+- Manajemen pengguna & peran (Admin, Manager, Member): tambah, ubah, nonaktifkan, hapus, dan reset password oleh Admin
+- Manajemen hak akses per pengguna: default mengikuti peran, Admin dapat menambah/mencabut hak aksi penting untuk orang tertentu
 - Kontak & Perusahaan (CRUD, tag, pencarian, filter, import/export CSV)
 - Pipeline Deal berbasis Kanban (drag & drop, Won/Lost, nilai deal)
 - Task Board berbasis Kanban (board, kolom, kartu tugas, checklist, komentar)
@@ -89,6 +94,10 @@ Aplikasi akan dibangun sebagai sistem **internal (single-tenant)** untuk dipakai
 | Data hasil import kotor/duplikat | Tinggi | Sedang | Validasi & deteksi duplikat saat import, preview sebelum simpan |
 | Scope creep | Tinggi | Sedang | Patuh pada MoSCoW, fitur baru masuk backlog Fase 2 |
 | Kebocoran data pelanggan | Rendah | Tinggi | RBAC, enkripsi koneksi, backup, audit log |
+| Karyawan yang keluar masih bisa mengakses data | Sedang | Tinggi | Admin menonaktifkan akun; sesi yang sedang berjalan langsung terputus; semua perubahan akun tercatat di audit log |
+| Admin terakhir terkunci/terhapus sehingga tidak ada yang bisa mengelola sistem | Rendah | Tinggi | Sistem menolak menurunkan, menonaktifkan, atau menghapus Admin aktif terakhir |
+| Hak akses khusus menumpuk dan sulit diawasi | Sedang | Sedang | Pengguna dengan pengecualian ditandai "Akses khusus" di daftar pengguna; tombol kembali ke default peran; setiap perubahan hak tercatat di audit log |
+| Penyalahgunaan hak untuk menaikkan akses sendiri | Rendah | Tinggi | Hanya Admin yang dapat mengatur hak; kelola pengguna tidak dapat diberikan ke peran lain; Admin tidak dapat mengubah hak akunnya sendiri |
 | Performa Kanban lambat saat data besar | Sedang | Sedang | Paginasi per kolom, indeks database, optimistic update |
 
 ## 10. Kriteria Sukses

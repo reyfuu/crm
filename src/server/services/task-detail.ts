@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { format } from "date-fns";
 import { db } from "@/server/db";
-import { ForbiddenError } from "@/server/permissions";
+import { ForbiddenError, can } from "@/server/permissions";
 import { NotFoundError } from "@/server/action-utils";
 import type { CurrentUser } from "@/server/session";
 import { getAccessibleBoard } from "@/server/services/tasks";
@@ -29,7 +29,7 @@ export type TaskDetail = {
   canEdit: boolean;
   canDelete: boolean;
   currentUserId: string;
-  isManager: boolean;
+  canDeleteAnyComment: boolean;
 };
 
 /** Ambil tugas + board-nya, dan pastikan pengguna boleh melihat/mengubah. */
@@ -38,7 +38,7 @@ async function loadTask(user: CurrentUser, taskId: string, mode: "view" | "edit"
   if (!task) throw new NotFoundError("Tugas tidak ditemukan.");
   const access = await getAccessibleBoard(user, task.column.boardId);
   if (!access) throw new NotFoundError("Tugas tidak ditemukan.");
-  const canEdit = access.isMember || user.role !== "MEMBER";
+  const canEdit = access.isMember || can(user, "board.manageAll");
   if (mode === "edit" && !canEdit) throw new ForbiddenError();
   return { task, board: access.board, canEdit };
 }
@@ -100,9 +100,9 @@ export async function getTaskDetail(user: CurrentUser, taskId: string): Promise<
     createdByName: authors.get(full.createdById) ?? "?",
     createdAt: full.createdAt.toISOString(),
     canEdit,
-    canDelete: user.role !== "MEMBER" || full.createdById === user.id,
+    canDelete: full.createdById === user.id || can(user, "task.deleteAny"),
     currentUserId: user.id,
-    isManager: user.role !== "MEMBER",
+    canDeleteAnyComment: can(user, "task.deleteAny"),
   };
 }
 
@@ -201,7 +201,7 @@ export async function addComment(user: CurrentUser, taskId: string, body: string
 export async function deleteComment(user: CurrentUser, commentId: string) {
   const comment = await db.comment.findUnique({ where: { id: commentId } });
   if (!comment) throw new NotFoundError("Komentar tidak ditemukan.");
-  if (comment.authorId !== user.id && user.role === "MEMBER") throw new ForbiddenError();
+  if (comment.authorId !== user.id && !can(user, "task.deleteAny")) throw new ForbiddenError();
   await db.comment.delete({ where: { id: comment.id } });
 }
 
@@ -212,7 +212,7 @@ export async function archiveTask(user: CurrentUser, taskId: string) {
 
 export async function deleteTask(user: CurrentUser, taskId: string) {
   const { task } = await loadTask(user, taskId, "edit");
-  if (task.createdById !== user.id && user.role === "MEMBER") throw new ForbiddenError();
+  if (task.createdById !== user.id && !can(user, "task.deleteAny")) throw new ForbiddenError();
   await db.task.delete({ where: { id: task.id } });
   await db.auditLog.create({ data: { actorId: user.id, action: "DELETE", entity: "Task", entityId: task.id, meta: { title: task.title } } });
 }

@@ -1,6 +1,7 @@
 # Technical Requirements Document (TRD)
 **Produk:** CRM + Kanban Internal
-**Versi:** 1.0 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [PRD.md](PRD.md), [FRD.md](FRD.md), [DESIGN.md](DESIGN.md)
+**Versi:** 1.1 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [PRD.md](PRD.md), [FRD.md](FRD.md), [DESIGN.md](DESIGN.md)
+**Revisi 1.1:** kelola pengguna (bagian 5.3), hak akses per pengguna (bagian 5.4, TR-SEC-12), verifikasi sesi ke database (TR-SEC-11), hashing bcrypt sesuai implementasi.
 
 ---
 
@@ -125,6 +126,8 @@ model User {
   role         Role      @default(MEMBER)
   avatarUrl    String?
   isActive     Boolean   @default(true)
+  permissionsGranted String[] @default([]) // hak di luar default peran (BRL-ACCESS-1)
+  permissionsRevoked String[] @default([]) // hak default peran yang dicabut
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -428,7 +431,8 @@ type ActionResult<T> =
 ### 5.1 Server Actions
 | Modul | Action | FR |
 |-------|--------|----|
-| Auth/User | `inviteUser`, `updateUserRole`, `deactivateUser`, `updateProfile`, `changePassword` | FR-AUTH-05..07 |
+| User (Admin) | `createUserAction`, `updateUserAction` (data, peran, status aktif, `permissions`), `resetPasswordAction`, `deleteUserAction` | FR-AUTH-05, 06, 09, 10, 12 |
+| Profil | `updateProfile`, `changePassword` *(belum dibangun)* | FR-AUTH-07 |
 | Contact | `createContact`, `updateContact`, `deleteContact`, `restoreContact`, `mergeContacts`, `bulkUpdateContacts` | FR-CON-* |
 | Company | `createCompany`, `updateCompany`, `deleteCompany` | FR-COM-* |
 | Activity | `createActivity`, `updateActivity`, `deleteActivity` | FR-ACT-* |
@@ -445,6 +449,7 @@ type ActionResult<T> =
 | Method | Endpoint | Fungsi |
 |--------|----------|--------|
 | GET/POST | `/api/auth/[...nextauth]` | Auth.js |
+| GET | `/session-ended` | Menghapus sesi akun yang sudah nonaktif/dihapus lalu redirect ke `/login?error=inactive`. Akun aktif hanya diarahkan ke `/dashboard` (tidak bisa dipakai untuk logout paksa). FR-AUTH-11 |
 | GET | `/api/search?q=` | Pencarian global (FR-SRCH-01) |
 | GET | `/api/boards/:id/columns/:colId/tasks?cursor=` | Muat kartu tambahan per kolom |
 | GET | `/api/stages/:stageId/deals?cursor=` | Muat deal tambahan per tahap |
@@ -456,19 +461,47 @@ type ActionResult<T> =
 | POST | `/api/cron/due-tasks` | Notifikasi tugas jatuh tempo (dilindungi `CRON_SECRET`) |
 | POST | `/api/cron/cleanup` | Hapus permanen soft-delete > 30 hari, rebalance posisi |
 
+### 5.3 Kelola Pengguna (FR-AUTH-05, 06, 08..11)
+| Lapisan | File | Isi |
+|---------|------|-----|
+| Halaman | `app/(app)/settings/users/page.tsx` | Server Component; `notFound()` bila bukan `user.manage`. Query daftar dengan filter `q`, `role`, `status` lewat `searchParams`. |
+| Dialog | `app/(app)/settings/users/user-dialogs.tsx` | Client Component: tambah, ubah, reset password, hapus. Generator password acak memakai `crypto.getRandomValues`. |
+| Action | `server/actions/users.ts` | `requireUser` → `runAction` → service → `revalidatePath('/settings/users')` (ubah pengguna juga me-revalidate layout karena nama/peran tampil di header). |
+| Service | `server/services/users.ts` | Validasi Zod, `assertCan(user, "user.manage")`, aturan BRL-USER-1..5, hash bcrypt, audit log. `countUserData()` menghitung data milik pengguna sebelum hapus. |
+| Sesi | `server/session.ts`, `app/session-ended/route.ts` | TR-SEC-11. |
+
+Catatan desain:
+- **Hapus vs nonaktifkan:** relasi owner (`Contact`, `Company`, `Deal`) tidak memakai `onDelete`, dan kolom pelaku (`Task.createdById`, `Comment.authorId`, `Activity.authorId`, `DealStageHistory.changedById`) tidak punya foreign key. Karena itu service memeriksa semua kolom tersebut lebih dulu dan menolak hapus bila ada data; `BoardMember`, `TaskAssignee`, `Notification` ikut terhapus lewat `onDelete: Cascade`.
+- **Admin aktif terakhir** dicek dengan `count({ role: ADMIN, isActive: true, id: { not: target } })` sebelum menurunkan peran, menonaktifkan, atau menghapus.
+- **Script CLI** untuk server tanpa UI: `scripts/create-user.mjs` dan `scripts/set-password.mjs` (aturan password sama).
+
+### 5.4 Hak Akses per Pengguna (FR-AUTH-12, BRL-ACCESS)
+| Bagian | File | Isi |
+|--------|------|-----|
+| Katalog | `lib/access.ts` | `PERMISSIONS` (kode, grup, label, petunjuk), `ROLE_DEFAULTS`, `effectivePermissions(role, granted, revoked)`, `overridesFor(role, selected)`. Dipakai server & UI (tanpa `server-only`). |
+| Data | `User.permissionsGranted`, `User.permissionsRevoked` (`text[]`) | Migrasi `20261031120000_user_permission_overrides` (hanya menambah kolom). |
+| Sesi | `server/session.ts` | `CurrentUser.permissions` = hak efektif, dihitung dari baris `User` setiap request (TR-SEC-11). |
+| Pengecekan | `server/permissions.ts` | `can()`/`assertCan()`: `user.manage` → hanya `role === ADMIN`; `deal.update` → selalu boleh; `contact.update` → pemilik atau `contact.updateAll`; selain itu `user.permissions.includes(action)`. Tidak ada lagi pengecekan `role !== "MEMBER"` di service/halaman. |
+| Service | `services/users.ts` | Validasi kode hak (Zod + `isPermission`), simpan selisih via `overridesFor`, tolak ubah hak akun sendiri, audit `PERMISSIONS_CHANGED`. |
+| UI | `settings/users/user-dialogs.tsx` | Komponen `AccessEditor` di modal Tambah/Ubah; badge "Akses khusus" di daftar. |
+
+Pemakaian hak di kode: `board.manageAll` (`services/tasks.ts`, `services/task-detail.ts`, halaman board), `task.deleteAny` (hapus tugas/komentar), `dashboard.team` (dashboard), `settings.manage` (halaman & menu Pengaturan), `deal.delete`/`deal.changeOwner` (`services/deal-detail.ts`). `contact.*`, `data.import`/`data.export`, dan `audit.view` sudah tersedia di katalog dan diberlakukan saat fiturnya dibangun.
+
 ## 6. Keamanan
 | ID | Kebutuhan |
 |----|-----------|
 | TR-SEC-01 | Semua rute di bawah `/(app)` dilindungi middleware Auth.js; tanpa sesi → redirect `/login`. |
-| TR-SEC-02 | RBAC dicek di service layer untuk **setiap** mutasi & query (tidak mengandalkan UI). Helper `assertCan(user, action, resource)`. |
-| TR-SEC-03 | Password di-hash argon2id; token reset/undangan disimpan dalam bentuk hash, sekali pakai, berkedaluwarsa. |
+| TR-SEC-02 | Hak akses dicek di service layer untuk **setiap** mutasi & query (tidak mengandalkan UI). Helper `assertCan(user, action, resource)` membaca hak efektif pengguna (bagian 5.4). |
+| TR-SEC-03 | Password di-hash bcrypt (`bcryptjs`, cost 10); password tidak pernah disimpan/ditampilkan ulang setelah dibuat. Tidak ada token reset password: lupa password direset oleh Admin (FR-AUTH-04, FR-AUTH-09). Token undangan (fase berikut) disimpan dalam bentuk hash, sekali pakai, berkedaluwarsa. |
 | TR-SEC-04 | Rate limit login (5/15 menit) dan endpoint sensitif (import/export) — in-memory/Redis. |
 | TR-SEC-05 | Server Actions memakai proteksi CSRF bawaan Next.js (origin check); cookie sesi `HttpOnly`, `Secure`, `SameSite=Lax`. |
 | TR-SEC-06 | Semua input divalidasi Zod di server; output di-escape oleh React; markdown dirender dengan sanitasi. |
 | TR-SEC-07 | Upload: whitelist MIME, maks 10 MB, nama file diacak, akses via signed URL berumur pendek. |
 | TR-SEC-08 | Header keamanan: CSP, HSTS, X-Frame-Options DENY, Referrer-Policy. |
-| TR-SEC-09 | Audit log untuk login, perubahan peran, hapus, import, export (FR-SET-06). |
+| TR-SEC-09 | Audit log untuk login, `USER_CREATED`, `USER_UPDATED`, `ROLE_CHANGED`, `PERMISSIONS_CHANGED`, `USER_ACTIVATED`/`USER_DEACTIVATED`, `PASSWORD_RESET`, `USER_DELETED`, hapus data, import, export (FR-SET-06). |
 | TR-SEC-10 | Secret hanya di environment variable; tidak pernah di repo. |
+| TR-SEC-11 | Sesi JWT hanya dipakai sebagai identitas. `requireUser()` (di-`cache` per request) membaca nama, peran, dan `isActive` dari tabel `User` pada setiap request, sehingga perubahan peran/penonaktifan berlaku seketika. Pengguna nonaktif/terhapus diarahkan ke `/session-ended`. |
+| TR-SEC-12 | Eskalasi hak dicegah: hanya pengguna ber-peran Admin yang dapat mengubah hak; kode hak divalidasi terhadap katalog; `user.manage` tidak ada di katalog sehingga tidak dapat diberikan; Admin tidak dapat mengubah hak akunnya sendiri. |
 
 ## 7. Performa & Skalabilitas
 | ID | Target |
@@ -489,7 +522,7 @@ crm/
 │  └─ seed.ts
 ├─ src/
 │  ├─ app/
-│  │  ├─ (auth)/login, forgot-password, invite/[token]
+│  │  ├─ (auth)/login, invite/[token]
 │  │  ├─ (app)/
 │  │  │  ├─ layout.tsx              # sidebar + topbar
 │  │  │  ├─ dashboard/
@@ -546,10 +579,10 @@ crm/
 ## 11. Strategi Testing
 | Jenis | Cakupan | Tools |
 |-------|---------|-------|
-| Unit | Service layer (aturan BRL-*, RBAC), util `position`, normalisasi telepon, parser CSV | Vitest |
+| Unit | Service layer (aturan BRL-*, termasuk BRL-USER: admin aktif terakhir, hapus hanya tanpa data, RBAC), util `position`, normalisasi telepon, parser CSV | Vitest |
 | Integrasi | Server Actions dengan database test (Postgres di Docker) | Vitest |
 | Komponen | Form, KanbanColumn, filter | Testing Library |
-| E2E | Login, tambah kontak → buat deal → geser ke Won; Lost wajib alasan; buat tugas & pindah ke Done; Member bisa geser deal orang lain & owner menerima notifikasi; Member tidak bisa hapus deal | Playwright |
+| E2E | Login, tambah kontak → buat deal → geser ke Won; Lost wajib alasan; buat tugas & pindah ke Done; Member bisa geser deal orang lain & owner menerima notifikasi; Member tidak bisa hapus deal; Admin menambah pengguna → pengguna login; Admin memberi Member hak "Kelola pengaturan" → menu Pengaturan muncul tanpa login ulang; Admin mencabut hak Manager → aksi ditolak; Admin menonaktifkan pengguna yang sedang login → pengguna langsung keluar; Manager tidak bisa membuka /settings/users | Playwright |
 | Target | Coverage service layer ≥ 80% | — |
 
 ## 12. Persiapan Fase 2 (Integrasi WA & Email)
@@ -559,7 +592,9 @@ crm/
 ## 13. Pemetaan Requirement → Teknis
 | FR | Komponen teknis |
 |----|-----------------|
-| FR-AUTH-* | `server/auth.ts`, middleware, `User`, `AuditLog`, TR-SEC-01..05 |
+| FR-AUTH-01..04, 07 | `server/auth.ts`, `proxy.ts`, `User`, `AuditLog`, TR-SEC-01..05 |
+| FR-AUTH-05, 06, 08..11 | `services/users.ts`, `actions/users.ts`, `app/(app)/settings/users/`, `server/session.ts`, `app/session-ended/route.ts`, `User`, `AuditLog`, TR-SEC-09, TR-SEC-11 |
+| FR-AUTH-12 | `lib/access.ts`, `server/permissions.ts`, `User.permissionsGranted/Revoked`, `AccessEditor`, TR-SEC-12 |
 | FR-CON-*, FR-COM-* | `Contact`, `Company`, `Tag`, services contact/company, TR-02, TR-03 |
 | FR-ACT-* | `Activity`, dibuat di service saat event (transaksi yang sama) |
 | FR-DEAL-* | `Stage`, `Deal`, `DealStageHistory`, `components/kanban`, TR-01, TR-06 |

@@ -58,10 +58,10 @@ export default async function ContactsPage({
             <Plus /> Kontak
           </Link>
         }
-      />
-      <form className="mb-4 flex flex-wrap gap-2">
-        <Input name="q" defaultValue={q} placeholder="Cari nama, email, telepon" className="max-w-xs" />
-        <Select name="status" defaultValue={status ?? ""} className="w-40">
+      ><p className="mt-2 text-sm text-muted-foreground">Bangun relasi dan kelola setiap kontak pelanggan Anda.</p></PageHeader>
+      <form className="mb-5 flex flex-wrap gap-3 rounded-lg border border-border bg-card p-4">
+        <Input name="q" aria-label="Cari nama, email, atau telepon" defaultValue={q} placeholder="Cari nama, email, telepon…" className="sm:max-w-xs" />
+        <Select name="status" aria-label="Filter status kontak" defaultValue={status ?? ""} className="w-40">
           <option value="">Semua status</option>
           {Object.entries(contactStatus).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
@@ -83,7 +83,7 @@ export default async function ContactsPage({
             <thead className="border-b border-border text-left text-muted-foreground">
               <tr>
                 {["Nama", "Perusahaan", "Email", "Telepon", "Status", "Owner", "Diperbarui"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 font-medium">{h}</th>
+                  <th key={h} scope="col" className="px-4 py-2.5 font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -92,7 +92,7 @@ export default async function ContactsPage({
                 <tr key={c.id} className="border-b border-border last:border-0 hover:bg-surface">
                   <td className="px-4 py-2.5">
                     <Link href={`/contacts/${c.id}`} className="font-medium hover:text-primary">
-                      {[c.firstName, c.lastName].filter(Boolean).join(" ")}
+                      <span className="flex items-center gap-3"><Avatar name={[c.firstName, c.lastName].filter(Boolean).join(" ")} size={32} />{[c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
                     </Link>
                   </td>
                   <td className="px-4 py-2.5">{c.company?.name ?? "—"}</td>

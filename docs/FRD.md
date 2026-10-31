@@ -1,6 +1,7 @@
 # Functional Requirements Document (FRD)
 **Produk:** CRM + Kanban Internal
-**Versi:** 1.0 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [BRD.md](BRD.md), [PRD.md](PRD.md)
+**Versi:** 1.1 · **Tanggal:** 31 Oktober 2026 · **Referensi:** [BRD.md](BRD.md), [PRD.md](PRD.md)
+**Revisi 1.1:** modul AUTH diperluas dengan kelola pengguna (FR-AUTH-05, 06, 08..11), aturan BRL-USER, dan hak akses per pengguna (bagian 2.1, FR-AUTH-12, BRL-ACCESS).
 
 ---
 
@@ -28,46 +29,89 @@ Dokumen ini menjabarkan perilaku fungsional setiap modul MVP: apa yang dilakukan
 | **Manager** | Melihat & mengubah semua data CRM dan board; mengatur pipeline & board; tidak mengelola pengguna |
 | **Member** | Melihat semua kontak, perusahaan, dan deal (satu board pipeline bersama); boleh mengubah & menggeser deal siapa pun; kontak/perusahaan hanya miliknya; board tugas di mana ia anggota |
 
-### Matriks Hak Akses
-| Aksi | Admin | Manager | Member |
-|------|:-----:|:-------:|:------:|
-| Kelola pengguna & peran | ✅ | ❌ | ❌ |
-| Lihat semua kontak & perusahaan | ✅ | ✅ | ✅ (read) |
-| Buat kontak/perusahaan | ✅ | ✅ | ✅ |
-| Ubah kontak/perusahaan | ✅ | ✅ | Milik sendiri |
-| Hapus kontak/perusahaan | ✅ | ✅ | ❌ |
-| Lihat deal (board pipeline bersama) | ✅ | ✅ | ✅ |
-| Buat/ubah/geser deal (termasuk Won/Lost) | ✅ | ✅ | ✅ semua deal |
-| Hapus deal | ✅ | ✅ | ❌ |
-| Ganti owner deal/kontak | ✅ | ✅ | ❌ |
-| Atur tahap pipeline | ✅ | ✅ | ❌ |
-| Buat board | ✅ | ✅ | ✅ (jadi owner board) |
-| Kelola kolom & anggota board | ✅ | ✅ | Owner board |
-| Buat/ubah/geser tugas | ✅ | ✅ | Anggota board |
-| Hapus tugas | ✅ | ✅ | Pembuat tugas |
-| Import CSV | ✅ | ✅ | ❌ |
-| Export CSV | ✅ | ✅ | ❌ |
-| Dashboard tim | ✅ | ✅ | Data sendiri |
-| Lihat audit log | ✅ | ❌ | ❌ |
+### Matriks Hak Akses (default peran)
+Kolom **Kode hak** menandai aksi yang dapat ditambah/dicabut per pengguna (bagian 2.1). Aksi tanpa kode berlaku tetap.
+
+| Aksi | Kode hak | Admin | Manager | Member |
+|------|----------|:-----:|:-------:|:------:|
+| Kelola pengguna, reset password, atur hak akses | — (khusus Admin) | ✅ | ❌ | ❌ |
+| Lihat semua kontak & perusahaan | — | ✅ | ✅ | ✅ (read) |
+| Buat kontak/perusahaan | — | ✅ | ✅ | ✅ |
+| Ubah kontak/perusahaan | `contact.updateAll` | ✅ | ✅ | Milik sendiri |
+| Hapus kontak/perusahaan | `contact.delete` | ✅ | ✅ | ❌ |
+| Lihat deal (board pipeline bersama) | — | ✅ | ✅ | ✅ |
+| Buat/ubah/geser deal (termasuk Won/Lost) | — | ✅ | ✅ | ✅ semua deal |
+| Hapus deal | `deal.delete` | ✅ | ✅ | ❌ |
+| Ganti owner deal | `deal.changeOwner` | ✅ | ✅ | ❌ |
+| Kelola pengaturan (tahap pipeline, alasan Lost, sumber lead) | `settings.manage` | ✅ | ✅ | ❌ |
+| Buat board | — | ✅ | ✅ | ✅ (jadi owner board) |
+| Lihat & ubah tugas di board yang bukan anggotanya (termasuk board privat) | `board.manageAll` | ✅ | ✅ | ❌ (hanya board tempat ia anggota) |
+| Hapus tugas & komentar orang lain | `task.deleteAny` | ✅ | ✅ | ❌ (hanya buatan sendiri) |
+| Import CSV | `data.import` | ✅ | ✅ | ❌ |
+| Export CSV | `data.export` | ✅ | ✅ | ❌ |
+| Kinerja tim di dashboard | `dashboard.team` | ✅ | ✅ | ❌ (data pipeline & tugas sendiri) |
+| Lihat audit log | `audit.view` | ✅ | ❌ | ❌ |
+
+### 2.1 Hak Akses per Pengguna
+Setiap pengguna memiliki **hak efektif** = default peran + hak yang ditambahkan − hak yang dicabut. Admin mengatur pengecualian ini di modal Tambah/Ubah pengguna (FR-AUTH-12). Tabel berikut adalah daftar hak yang dapat diatur beserta default tiap peran:
+
+| Kode | Aksi | Admin | Manager | Member |
+|------|------|:-----:|:-------:|:------:|
+| `contact.updateAll` | Ubah semua kontak & perusahaan (bukan hanya milik sendiri) | ✅ | ✅ | ❌ |
+| `contact.delete` | Hapus kontak & perusahaan | ✅ | ✅ | ❌ |
+| `deal.delete` | Hapus deal | ✅ | ✅ | ❌ |
+| `deal.changeOwner` | Ganti owner deal | ✅ | ✅ | ❌ |
+| `board.manageAll` | Akses semua board (lihat & ubah tugas di board mana pun, termasuk board privat) | ✅ | ✅ | ❌ |
+| `task.deleteAny` | Hapus tugas & komentar orang lain | ✅ | ✅ | ❌ |
+| `dashboard.team` | Lihat kinerja tim di dashboard | ✅ | ✅ | ❌ |
+| `data.import` | Import data (CSV) | ✅ | ✅ | ❌ |
+| `data.export` | Export data (CSV) | ✅ | ✅ | ❌ |
+| `settings.manage` | Kelola pengaturan (tahap pipeline, alasan Lost, sumber lead) | ✅ | ✅ | ❌ |
+| `audit.view` | Lihat audit log | ✅ | ❌ | ❌ |
+| *(tetap)* | Kelola pengguna, reset password, atur hak akses | ✅ | ❌ | ❌ |
+
+Hak yang **tidak** dapat diatur (berlaku untuk semua pengguna): melihat kontak/perusahaan/deal, membuat kontak/perusahaan/deal, mengubah & menggeser deal siapa pun (BRL-DEAL-3), mengubah kontak/perusahaan milik sendiri, membuat board, dan mengubah tugas di board tempat ia menjadi anggota.
 
 > Semua pengguna melihat seluruh deal tim dalam **satu board pipeline bersama**. Semua pengguna boleh mengubah dan menggeser deal siapa pun; setiap perubahan tercatat di histori dengan nama pelakunya. Hapus deal dan ganti owner tetap khusus Admin/Manager.
 
 ---
 
 ## 3. Modul AUTH — Autentikasi & Pengguna
-*Referensi: US-01, US-02 · BR-07*
+*Referensi: US-01, US-02, US-21, US-22, US-23 · BR-07, BR-11*
 
 | ID | Fungsi | Detail |
 |----|--------|--------|
 | FR-AUTH-01 | Login email & password | Input: email, password. Sukses → sesi dibuat, redirect ke `/dashboard`. Gagal → pesan generik "Email atau password salah". |
 | FR-AUTH-02 | Pembatasan percobaan login | 5 kali gagal dalam 15 menit per email/IP → kunci 15 menit. |
 | FR-AUTH-03 | Logout | Menghapus sesi aktif. |
-| FR-AUTH-04 | Lupa & reset password | Tautan reset dikirim via email, berlaku 1 jam, sekali pakai. |
-| FR-AUTH-05 | Undang pengguna (Admin) | Input: nama, email, peran. Sistem mengirim tautan aktivasi (berlaku 72 jam) untuk set password. |
-| FR-AUTH-06 | Ubah peran / nonaktifkan pengguna (Admin) | Pengguna nonaktif tidak bisa login; kepemilikan data tetap. Admin terakhir tidak dapat dinonaktifkan. |
-| FR-AUTH-07 | Profil | Pengguna dapat mengubah nama, foto, password. |
+| FR-AUTH-04 | Lupa password | Tombol "Lupa kata sandi?" di halaman login menampilkan petunjuk untuk menghubungi Admin. Admin membuat password baru lewat FR-AUTH-09 dan membagikannya secara pribadi. Tidak ada reset mandiri lewat email. |
+| FR-AUTH-05 | Tambah pengguna (Admin) | Input: nama*, email*, peran*, password awal* (tombol "Acak" membuat password yang memenuhi aturan). Akun langsung aktif. Setelah tersimpan, email & password tampil **sekali** dengan tombol Salin untuk dibagikan lewat jalur pribadi. Undangan via email (tautan aktivasi 72 jam) menyusul setelah SMTP tersedia. |
+| FR-AUTH-06 | Ubah pengguna (Admin) | Field: nama, email, peran, status aktif. Pengguna nonaktif tidak bisa login dan sesi yang sedang berjalan langsung berakhir (FR-AUTH-11); kepemilikan data tetap. Berlaku BRL-USER-1..3. |
+| FR-AUTH-07 | Profil | Pengguna dapat mengubah nama, foto, password. *(belum dibangun)* |
+| FR-AUTH-08 | Daftar pengguna (Admin) | Halaman `/settings/users`: nama, email, peran, status, login terakhir, tanggal dibuat. Pencarian nama/email; filter peran & status (aktif/nonaktif); ringkasan jumlah aktif/nonaktif. Akun sendiri ditandai "(Anda)". |
+| FR-AUTH-09 | Reset password oleh Admin | Admin mengisi password baru (atau acak) untuk pengguna mana pun. Password lama langsung tidak berlaku; password baru tampil sekali untuk dibagikan. |
+| FR-AUTH-10 | Hapus pengguna (Admin) | Hapus permanen hanya untuk pengguna yang **belum punya data** (BRL-USER-4). Jika ditolak, sistem menyebut jumlah datanya dan menawarkan tombol "Nonaktifkan saja". Keanggotaan board, assignment tugas, dan notifikasinya ikut terhapus. |
+| FR-AUTH-11 | Perubahan akses berlaku seketika | Setiap permintaan halaman/aksi memeriksa nama, peran, hak akses, dan status pengguna di database (bukan dari isi token sesi). Akun yang dinonaktifkan/dihapus otomatis dikeluarkan ke halaman login dengan pesan "Akun Anda sudah dinonaktifkan atau dihapus". |
 
-**Validasi:** email unik & format valid; password min. 8 karakter, mengandung huruf dan angka.
+| FR-AUTH-12 | Atur hak akses per pengguna (Admin) | Di modal Tambah/Ubah pengguna terdapat bagian "Hak akses": daftar hak pada bagian 2.1, dikelompokkan (Kontak & perusahaan, Pipeline, Board & tugas, Laporan & data, Administrasi). Nilai awal = default peran. Hak yang berbeda dari default diberi tanda "Ditambahkan"/"Dicabut"; tombol "Default peran" mengembalikan ke default. Mengganti peran di modal mengatur ulang centang ke default peran baru. Peran Admin: semua tercentang & terkunci. Daftar pengguna menandai pengguna dengan pengecualian sebagai "Akses khusus". Menu dan tombol yang tidak diizinkan disembunyikan, dan server tetap menolak aksinya. |
+
+**Aturan bisnis pengguna**
+- BRL-USER-1: Admin tidak dapat mengubah peran akun sendiri atau menonaktifkan akun sendiri.
+- BRL-USER-2: Harus selalu ada minimal satu **Admin aktif**. Menurunkan peran, menonaktifkan, atau menghapus Admin aktif terakhir ditolak.
+- BRL-USER-3: Email unik (tidak membedakan huruf besar/kecil) dan disimpan dalam huruf kecil.
+- BRL-USER-4: Pengguna yang tercatat sebagai owner kontak/perusahaan/deal, pembuat tugas, penulis komentar/aktivitas, atau pelaku perpindahan tahap tidak dapat dihapus, hanya dinonaktifkan, agar riwayat tetap utuh.
+- BRL-USER-5: Admin tidak dapat menghapus akun sendiri.
+- BRL-USER-6: Setiap tambah, ubah (termasuk perubahan peran, status, & hak akses), reset password, dan hapus pengguna dicatat di audit log beserta pelaku dan perubahan nilainya.
+
+**Aturan bisnis hak akses**
+- BRL-ACCESS-1: Hak efektif = default peran + ditambahkan − dicabut. Yang disimpan hanya selisihnya terhadap default peran, sehingga perubahan default di masa depan tetap berlaku bagi pengguna tanpa pengecualian.
+- BRL-ACCESS-2: Peran Admin selalu memiliki semua hak; pengecualian untuk Admin diabaikan dan dikosongkan.
+- BRL-ACCESS-3: Kelola pengguna, reset password, dan pengaturan hak akses khusus peran Admin dan tidak dapat diberikan ke peran lain.
+- BRL-ACCESS-4: Admin tidak dapat mengubah hak akses akun sendiri.
+- BRL-ACCESS-5: Jika peran diganti tanpa mengirim pilihan hak, pengecualian lama dihapus dan pengguna memakai default peran baru.
+- BRL-ACCESS-6: Perubahan hak berlaku pada permintaan berikutnya tanpa login ulang (FR-AUTH-11) dan dicatat sebagai `PERMISSIONS_CHANGED` di audit log.
+
+**Validasi:** nama 2–100 karakter; email unik & format valid; password 8–72 karakter, mengandung huruf dan angka.
 
 ---
 
@@ -233,7 +277,7 @@ Semua pengguna melihat angka pipeline seluruh tim (FR-DASH-01..04); widget Kiner
 | FR-SET-03 | Tag & label | Kelola tag (kontak/perusahaan/deal) dan label tugas beserta warnanya. |
 | FR-SET-04 | Sumber lead | Kelola daftar sumber lead. |
 | FR-SET-05 | Umum | Nama perusahaan, logo, mata uang (default IDR), zona waktu (default Asia/Jakarta). |
-| FR-SET-06 | Audit log (Admin) | Daftar aksi penting: login, perubahan peran, hapus data, import, export. |
+| FR-SET-06 | Audit log (hak `audit.view`) | Daftar aksi penting: login, tambah/ubah/hapus pengguna, perubahan peran, perubahan hak akses, aktivasi/nonaktifkan akun, reset password, hapus data, import, export. |
 
 ---
 
@@ -246,7 +290,9 @@ Semua pengguna melihat angka pipeline seluruh tim (FR-DASH-01..04); widget Kiner
 | BR-04 | US-13..US-16 | FR-TASK-01..11, FR-TASK-14 |
 | BR-05 | US-08 | FR-ACT-01..04 |
 | BR-06 | US-11, US-20 | FR-DASH-01..07 |
-| BR-07 | US-01, US-02 | FR-AUTH-01..07, Matriks RBAC |
+| BR-07 | US-01, US-02 | FR-AUTH-01..04, FR-AUTH-07, Matriks RBAC |
 | BR-08 | US-06, US-07 | FR-IO-01..04 |
 | BR-09 | US-12, US-13 | FR-SET-01..04, FR-TASK-02 |
 | BR-10 | — (Fase 2) | — |
+| BR-11 | US-02, US-21, US-22, US-23 | FR-AUTH-05, 06, 08..11, BRL-USER-1..6, FR-SET-06 |
+| BR-12 | US-24 | Bagian 2.1, FR-AUTH-12, BRL-ACCESS-1..6 |

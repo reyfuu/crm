@@ -20,7 +20,7 @@ export default async function CompaniesPage() {
 
   return (
     <>
-      <PageHeader title={`Perusahaan (${companies.length})`} />
+      <PageHeader title={`Perusahaan (${companies.length})`}><p className="mt-2 text-sm text-muted-foreground">Kenali perusahaan, hubungan, dan peluang bisnis Anda.</p></PageHeader>
       {companies.length === 0 ? (
         <EmptyState title="Belum ada perusahaan" description="Perusahaan akan muncul di sini setelah ditambahkan." />
       ) : (

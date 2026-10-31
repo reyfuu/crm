@@ -78,7 +78,7 @@ Semua perubahan lewat `src/server/actions` → `src/server/services`, dan hak ak
 (cek duplikat, timeline, catat aktivitas), daftar perusahaan, Pipeline Kanban (drag & drop, tambah deal,
 Won/Lost dengan alasan wajib, histori, notifikasi ke owner, penanda deal macet, filter "Deal saya"),
 Task Board Kanban (buat board dari template, tambah cepat, drag & drop, WIP limit, kolom Done),
-Tugas Saya, Dashboard, Pengaturan (baca saja).
+Tugas Saya, Dashboard. Menu Pengaturan dihapus dari sidebar (halaman baca-saja masih bisa dibuka lewat `/settings`).
 
 **Drawer detail deal** (klik kartu atau buka `/deals?deal=<id>`): edit semua field dengan pengecekan
 bentrok edit, ganti owner (Admin/Manager) + notifikasi, Won/Lost/buka kembali, hapus (Admin/Manager),
@@ -88,6 +88,13 @@ catat aktivitas, timeline & histori tahap, buat tugas follow-up ke board "Follow
 pindah kolom, assignee + notifikasi, checklist dengan progres, komentar dengan @mention + notifikasi,
 arsip & hapus.
 
+**Kelola pengguna** (Admin, menu Pengguna atau `/settings/users`): cari & filter, tambah dengan password awal
+(bisa diacak), ubah nama/email/peran, nonaktifkan (sesi langsung berakhir), reset password, hapus untuk akun tanpa data.
+Peran & status dibaca dari database setiap request, jadi perubahan akses langsung berlaku.
+Hak akses per pengguna: di modal Tambah/Ubah pengguna, Admin mencentang/mencabut aksi penting (hapus deal, ganti owner,
+akses semua board, kelola pengaturan, dll.). Default mengikuti peran; pengguna dengan pengecualian ditandai "Akses khusus".
+Lupa kata sandi: pengguna menghubungi Admin (petunjuknya ada di halaman login), lalu Admin me-reset dari menu Pengguna.
+
 **Berikutnya (lihat docs/PRD.md roadmap):** lonceng notifikasi (datanya sudah tercatat), edit/hapus kontak
-& perusahaan, pencarian global Ctrl+K, import/export CSV, form Pengaturan, undang pengguna & reset password,
+& perusahaan, pencarian global Ctrl+K, import/export CSV, form Pengaturan, undangan pengguna via email, halaman profil,
 rate limit login, tes otomatis (Vitest/Playwright).

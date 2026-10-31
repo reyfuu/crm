@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/session";
 import { getAccessibleBoard } from "@/server/services/tasks";
+import { can } from "@/server/permissions";
 import { Avatar, PageHeader } from "@/components/ui/misc";
 import { TaskBoard, type ColumnData, type TaskCardData } from "./task-board";
 
@@ -63,7 +64,7 @@ export default async function BoardPage({
     })),
   );
 
-  const canEdit = access.isMember || user.role !== "MEMBER";
+  const canEdit = access.isMember || can(user, "board.manageAll");
 
   return (
     <>

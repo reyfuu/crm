@@ -17,6 +17,8 @@ Bacalah berurutan: dari **kenapa** (bisnis) → **apa** (produk & fungsi) → **
 - **MVP:** Kontak & Perusahaan, Pipeline Deal (Kanban), Task Board (Kanban), Dashboard.
 - **Pipeline:** satu pipeline, satu board bersama untuk seluruh tim (semua pengguna boleh menggeser & mengubah deal siapa pun).
 - **Login:** email & password saja (tanpa Google).
+- **Pengguna:** Admin mengelola akun sendiri (tambah, ubah peran, nonaktifkan, hapus, reset password); perubahan akses berlaku seketika. Pengguna yang punya data hanya bisa dinonaktifkan.
+- **Hak akses:** default dari peran, lalu Admin dapat menambah/mencabut hak aksi penting per pengguna (FRD bagian 2.1).
 - **Stack:** Next.js (App Router, TypeScript) + Prisma + PostgreSQL + Auth.js.
 - **Fase 2:** integrasi WhatsApp & Email, otomasi, laporan lanjutan.
 
